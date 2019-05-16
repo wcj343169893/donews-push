@@ -1,3 +1,8 @@
 .idea
 vendor
 tests
+/composer.lock
+/.buildpath
+/.project
+.settings
+/config/.env

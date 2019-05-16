@@ -1,28 +1,30 @@
 <?php
-
-namespace tlsss\DoNewsPush\Services;
+namespace Mofing\DoNewsPush\Services;
 
 use Singiu\Http\Request;
-use tlsss\DoNewsPush\Contracts\DoNewsPusher;
+use Mofing\DoNewsPush\Contracts\DoNewsPusher;
 
 class UmengPush implements DoNewsPusher
 {
+
     private $_appKey;
+
     private $_appMasterSecret;
+
     private $request;
 
     /**
      * 构造函数。
      *
-     * @param array $config
+     * @param array $config            
      * @throws \Exception
      */
     public function __construct($config = null)
     {
-        if ($config === null && !function_exists('getenv')) {
+        if ($config === null && ! function_exists('getenv')) {
             throw new \Exception('Cannot found any configurations!');
         }
-
+        
         if ($config != null && isset($config['umeng']['app_key']) && $config['umeng']['app_key'] != '') {
             $this->_appKey = $config['umeng']['app_key'];
         } else if (function_exists('getenv')) {
@@ -30,7 +32,7 @@ class UmengPush implements DoNewsPusher
         } else {
             throw new \Exception('Cannot found configuration: umeng.app_key!');
         }
-
+        
         if ($config != null && isset($config['umeng']['app_master_secret']) && $config['umeng']['app_master_secret'] != '') {
             $this->_appMasterSecret = $config['umeng']['app_master_secret'];
         } else if (function_exists('getenv')) {
@@ -38,15 +40,19 @@ class UmengPush implements DoNewsPusher
         } else {
             throw new \Exception('Cannot found configuration: umeng.app_master_secret!');
         }
-
+        
         $this->request = new Request();
     }
 
     /**
      * 获取请求用的签名。
-     * @param $method
-     * @param $url
-     * @param $postBody
+     * 
+     * @param
+     *            $method
+     * @param
+     *            $url
+     * @param
+     *            $postBody
      * @return string
      */
     private function _getSign($method, $url, $postBody)
@@ -58,11 +64,15 @@ class UmengPush implements DoNewsPusher
     /**
      * 发送消息通知。
      *
-     * @param $deviceToken
-     * @param $title
-     * @param $message
+     * @param
+     *            $deviceToken
+     * @param
+     *            $title
+     * @param
+     *            $message
      * @return \Singiu\Http\Response
      * @throws
+     *
      */
     public function sendMessage($deviceToken, $title, $message)
     {
@@ -71,7 +81,7 @@ class UmengPush implements DoNewsPusher
         } else {
             $type = 'unicast';
         }
-
+        
         $payload = [
             'appkey' => $this->_appKey,
             'timestamp' => time() . '', // 转成字符串。
@@ -91,9 +101,9 @@ class UmengPush implements DoNewsPusher
                 ]
             ],
             'mipush' => true,
-            'mi_activity' => 'com.donews.tgbus.MipushTestActivity',
+            'mi_activity' => 'com.donews.tgbus.MipushTestActivity'
         ];
-
+        
         $requestUrl = 'https://msgapi.umeng.com/api/send';
         $data = json_encode($payload);
         // die($data);
@@ -104,5 +114,71 @@ class UmengPush implements DoNewsPusher
             'data' => $data
         ]);
         return $response;
+    }
+
+    /**
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\DoNewsPusher::send()
+     */
+    public static function send($deviceToken, $title, $message, $platform, $type, $id)
+    {
+        // TODO Auto-generated method stub
+    }
+
+    /**
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\DoNewsPusher::setToken()
+     */
+    public static function setToken($platform, $app_id, $user_id, $deviceToken)
+    {
+        // TODO Auto-generated method stub
+    }
+
+    /**
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\DoNewsPusher::getToken()
+     */
+    public static function getToken($app_id, $user_id)
+    {
+        // TODO Auto-generated method stub
+    }
+
+    /**
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\DoNewsPusher::setDeviceToken()
+     */
+    public static function setDeviceToken($app_id, $list_name, $device_id, $deviceToken)
+    {
+        // TODO Auto-generated method stub
+    }
+
+    /**
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\DoNewsPusher::getDeviceToken()
+     */
+    public static function getDeviceToken($app_id, $list_name, $page = 1, $pageSize = 100)
+    {
+        // TODO Auto-generated method stub
+    }
+
+    /**
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\DoNewsPusher::getListLen()
+     */
+    public static function getListLen($app_id, $list_name)
+    {
+        // TODO Auto-generated method stub
     }
 }

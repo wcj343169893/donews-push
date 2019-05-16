@@ -1,6 +1,6 @@
 <?php
 
-namespace tlsss\DoNewsPush\Exceptions;
+namespace Mofing\DoNewsPush\Exceptions;
 
 class PushException extends \Exception
 {

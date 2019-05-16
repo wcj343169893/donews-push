@@ -1,8 +1,10 @@
 <?php
 
-namespace tlsss\DoNewsPush\Services;
+namespace Mofing\DoNewsPush\Services;
 
-class ApnsPush
+use Mofing\DoNewsPush\Contracts\PushInterface;
+
+class ApnsPush implements PushInterface
 {
     const ENVIRONMENT_PRODUCTION = 0;
     const ENVIRONMENT_SANDBOX = 1;

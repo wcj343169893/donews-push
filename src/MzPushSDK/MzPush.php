@@ -6,7 +6,7 @@
  * Date: 2016/8/25
  * Time: 10:44
  */
-namespace tlsss\DoNewsPush\MzPushSDk;
+namespace Mofing\DoNewsPush\MzPushSDk;
 
 
 //===========错误码=============

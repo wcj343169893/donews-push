@@ -1,97 +1,55 @@
 <?php
+namespace Mofing\DoNewsPush\Services;
 
-namespace tlsss\DoNewsPush\Services;
-
-use Singiu\Http\Http;
-use Singiu\Http\Request;
 use Singiu\Http\Response;
-use Illuminate\Redis\RedisManager as Redis;
+use Mofing\DoNewsPush\Contracts\PushInterface;
 
-class HmsPush
+/**
+ * 华为推送
+ *
+ * @author Wenchaojun <343169893@qq.com>
+ * @link https://developer.huawei.com/consumer/cn/service/hms/catalog/huaweipush_agent.html?page=hmssdk_huaweipush_api_reference_agent_s2
+ */
+class HmsPush extends BasePush
 {
-    private $_accessToken;
-    private $_clientId;
-    private $_clientSecret;
-    private $_http;
-    private $_redis;
-    private $_authUrl = "https://login.cloud.huawei.com/oauth2/v2/token";
-    private	$_headers = array('Content-Type: application/x-www-form-urlencoded');
+
+    /**
+     * 获取token地址
+     *
+     * @var string
+     */
+    var $_authUrl = "https://login.cloud.huawei.com/oauth2/v2/token";
+
+    /**
+     * 发送推送地址
+     *
+     * @var string
+     */
+    var $_sendUrl = "https://api.push.hicloud.com/pushsend.do";
 
     /**
      * 构造函数。
      *
-     * @param array $config
+     * @param array $config            
      * @throws \Exception
      */
     public function __construct($config = null)
     {
-        if (!empty(config('push.platform.huawei.client_id'))) {
-            $this->_clientId = config('push.platform.huawei.client_id');
-        } else {
-            throw new \Exception('Cannot found configuration: huawei.client_id!');
-        }
-        if (!empty(config('push.platform.huawei.client_secret'))) {
-            $this->_clientSecret = config('push.platform.huawei.client_secret');
-        } else {
-            throw new \Exception('Cannot found configuration: hms.client_secret!');
-        }
-        $this->_redis = new Redis(config("push.redis.client"), config("push.redis"));
-        $this->_http = new Request();
-        $this->_http->setHttpVersion(Http::HTTP_VERSION_1_1);
-
-    }
-
-    /**
-     * 请求新的 Access Token。
-     */
-    private function _getAccessToken()
-    {
-        $this->_accessToken = $this->_redis->get("huawei:authToekn:");
-        if(!$this->_accessToken){
-            $data = [
-                'grant_type' => 'client_credentials',
-                'client_id' => $this->_clientId,
-                'client_secret' => $this->_clientSecret
-            ];
-
-            $data = http_build_query($data);
-
-            $res = self::curlPost($this->_authUrl, $this->_headers, $data);
-            $res = json_decode($res,1);
-            if(!isset($res['access_token'])){
-                throw new \Exception($res['error_description']);
-            }
-            $this->_accessToken = $res['access_token'];
-            $this->_redis->setex("huawei:authToekn:", $res['expires_in'],
-                $this->_accessToken);
-        }
-    }
-
-    private static function curlPost($url, $header, $data)
-    {
-        $ch = curl_init();//初始化curl
-        curl_setopt($ch, CURLOPT_URL, $url);//抓取指定网页
-        curl_setopt($ch, CURLOPT_HEADER, 0);//设置header
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);//要求结果为字符串且输出到屏幕上
-        curl_setopt($ch, CURLOPT_POST, 1);//post提交方式
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-        $result = curl_exec($ch);//运行curl
-        curl_close($ch);
-        return $result;
+        parent::__construct($config);
+        // 连接redis服务器，用来存储accessToken
+        $this->getRedisConnection();
     }
 
     /**
      * 发送华为推送消息。
-     * @param $deviceToken
-     * @param $title
-     * @param $message
-     * @return Response
-     * @throws
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\PushInterface::sendMessage()
      */
-    public function sendMessage($deviceToken, $title, $message, $type, $id)
+    public function sendMessage($deviceToken, $title, $message, $type, $after_open, $customize)
     {
-        date_default_timezone_set('PRC'); //设置中国时区
+        date_default_timezone_set('PRC'); // 设置中国时区
         $time = time();
         // 构建 Payload
         if (is_array($message)) {
@@ -100,44 +58,146 @@ class HmsPush
             $payload = json_encode([
                 'hps' => [
                     'msg' => [
-                        'type' => 3,
+                        'type' => $this->getSendType($type), // 1 透传异步消息 3 系统通知栏异
                         'body' => [
-                            'content' => $message,
-                            'title' => $title
+                            'title' => $title,
+                            'content' => $message
                         ],
-                        'action' => [
-                            'type' => 1,
-                            'param' => [
-                                'intent' => '#Intent;compo=com.wanmei.a9vg/.common.activitys.Activity;S.W=U;end'
-                            ]
-                        ]
+                        'action' => $this->getAfterOpen($after_open)
                     ],
                     'ext' => [
                         'customize' => [
-                            ['type' => $type],
-                            ['id' => $id]
+                            $customize
                         ]
-                    ],
+                    ]
                 ]
             ], JSON_UNESCAPED_UNICODE);
         } else {
             $payload = '';
         }
+        // 获取token
+        $accessToken = $this->getAccessToken();
+        if (! is_array($deviceToken)) {
+            $deviceToken = [
+                $deviceToken
+            ];
+        }
+        // echo $payload;
         // 发送消息通知
-        $this->_getAccessToken();
-
-        $response = $this->_http->post('https://api.push.hicloud.com/pushsend.do', [
+        $response = $this->_http->post($this->_sendUrl, [
             'query' => [
-                'nsp_ctx' => json_encode(['ver' => '1', 'appId' => $this->_clientId])
+                'nsp_ctx' => json_encode([
+                    'ver' => '1',
+                    'appId' => $this->appId
+                ])
+            ],
+            'headers' => [
+                "Content-Type" => "application/x-www-form-urlencoded"
             ],
             'data' => [
-                'access_token' => $this->_accessToken,
-                'nsp_ts' => $time,
+                'access_token' => $accessToken,
                 'nsp_svc' => 'openpush.message.api.send',
+                'nsp_ts' => $time, // 服务请求时间戳
                 'device_token_list' => json_encode($deviceToken),
-                'payload' => $payload
+                'payload' => $payload,
+                'expire_time' => date("Y-m-d\TH:i", strtotime("+3 days"))
             ]
         ]);
-        return $response;
+        return $response->getResponseArray();
+    }
+
+    /**
+     * 转换透传和消息
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\PushInterface::getSendType()
+     */
+    public function getSendType($type)
+    {
+        // 1 透传异步消息 3 系统通知栏异
+        $msgArr = [
+            "message" => 3,
+            "quiet" => 1
+        ];
+        return $msgArr[$type];
+    }
+
+    /**
+     * 点击之后的打开行为
+     * 1 自定义行为：行为由参数intent定义 ,2 打开URL：URL地址由参数url定义, 3 打开APP：默认值，打开App的首页
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\PushInterface::getAfterOpen()
+     */
+    public function getAfterOpen($go_after)
+    {
+        list ($type, $param) = $go_after;
+        if ($type == "go_custom") {
+            return [
+                'type' => 1,
+                'param' => [
+                    // 'intent' => '#Intent;compo=com.wanmei.a9vg/.common.activitys.Activity;S.W=U;end'
+                    'intent' => sprintf('#Intent;compo=%s;S.W=U;end', empty($param) ? $this->intentUri : $param)
+                ]
+            ];
+        } elseif ($type == "go_url") {
+            // Action的type为2的时候表示打开URL地址
+            return [
+                'type' => 2,
+                'param' => [
+                    "url" => $param
+                ]
+            ];
+        }
+        // 需要拉起的应用包名，必须和注册推送的包名一致。
+        return [
+            'type' => 3,
+            'param' => [
+                'appPkgName' => $this->pkgName
+            ]
+        ];
+    }
+
+    /**
+     * 请求新的 Access Token。
+     *
+     * @param number $tryCount
+     *            可重试次数
+     * @throws \Exception
+     * @return string
+     */
+    private function getAccessToken($tryCount = 1)
+    {
+        $key = $this->getCacheKey("huawei:authToekn");
+        $accessToken = $this->_redis->get($key);
+        if (! $accessToken) {
+            $data = [
+                'grant_type' => 'client_credentials',
+                'client_id' => $this->appId,
+                'client_secret' => $this->appSecret
+            ];
+            // 有很大几率会调用失败
+            $result = $this->_http->post($this->_authUrl, [
+                'data' => $data,
+                'headers' => [
+                    "Content-Type" => "application/x-www-form-urlencoded"
+                ]
+            ])->getResponseArray();
+            if (! isset($result['access_token'])) {
+                // 获取token失效
+                if ($tryCount < 1) {
+                    throw new \Exception($result['error_description']);
+                }
+                // 过一会儿重试
+                sleep(1);
+                return $this->getAccessToken($tryCount - 1);
+            }
+            $accessToken = $result['access_token'];
+            // 设置的缓存小于实际100秒，有利于掌控有效期
+            $this->_redis->setex($key, $result['expires_in'] - 100, $accessToken);
+        }
+        return $accessToken;
     }
 }

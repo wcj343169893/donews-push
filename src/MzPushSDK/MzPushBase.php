@@ -1,5 +1,5 @@
 <?php
-namespace tlsss\DoNewsPush\MzPushSDk;
+namespace Mofing\DoNewsPush\MzPushSDk;
 
 /**
  * 参数签名及发送请求

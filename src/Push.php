@@ -1,35 +1,52 @@
 <?php
+namespace Mofing\DoNewsPush;
 
-namespace tlsss\DoNewsPush;
-
-use \Illuminate\Redis\RedisManager as Redis;
-use tlsss\DoNewsPush\Exceptions\PushException;
-use tlsss\DoNewsPush\Contracts\DoNewsPusher;
+use Redis;
+use Mofing\DoNewsPush\Exceptions\PushException;
+use Mofing\DoNewsPush\Contracts\DoNewsPusher;
 
 class Push implements DoNewsPusher
 {
+
     private static $_config = null;
-    private static $_redis = null;
-    private static $_platform = null;
+
+    /**
+     *
+     * @var \Redis
+     */
+    private $_redis = null;
 
     public function __construct()
     {
-        if (!file_exists(config_path("push.php"))) {
-            throw new PushException("配置文件: " . config("push.php") . " 不存在", 500);
+        // 读取环境变量
+        if (file_exists(CONFIG . '.env')) {
+            $dotenv = new \josegonzalez\Dotenv\Loader([
+                CONFIG . '.env'
+            ]);
+            $dotenv->parse()
+                ->putenv()
+                ->toEnv()
+                ->toServer();
         }
-        static::$_config = config("push");
-        static::$_platform = config("push.platform");
-        static::$_redis = new Redis(config("push.redis.client"), config("push.redis"));
+        // 得到相关配置
+        $config = require_once dirname(__DIR__) . "/config/push.php";
+        static::$_config = $config;
     }
 
-    private static function getSerivce($platform)
+    /**
+     * 获取推送平台
+     *
+     * @param string $platform            
+     * @return string
+     */
+    private function getSerivce($platform)
     {
         switch ($platform) {
             case 'apple':
                 $service = "ApnsPush";
                 break;
-            case 'mi':
-                $service = "MiPush";
+            case 'xiaomi':
+                $service = "XiaomiPush";
                 break;
             case 'huawei':
                 $service = "HmsPush";
@@ -39,89 +56,107 @@ class Push implements DoNewsPusher
                 break;
             case 'vivo':
                 $service = "VivoPush";
+            case 'oppo':
+                $service = "OppoPush";
                 break;
             case 'meizu':
                 $service = "MeizuPush";
                 break;
             default:
-                throw new PushException("platform 参数错误", 405);
-                return null;
+                // 默认走友盟
+                $service = "UmengPush";
                 break;
         }
-
-        return "tlsss\\DoNewsPush\\Services\\" . $service;
+        return "Mofing\\DoNewsPush\\Services\\" . $service;
     }
 
     /**
      * 统一推送接口。
      *
-     * @param $deviceToken
-     * @param $title
-     * @param $message
-     * @param $platform
+     * @param
+     *            $deviceToken
+     * @param
+     *            $title
+     * @param
+     *            $message
+     * @param string $platform
+     *            平台名称apple mi huawei umeng vivo meizu
+     * @param string $after_open
+     *            go_custom/go_app/go_url
      * @return mixed
      */
-    public static function send($deviceToken, $title, $message, $platform, $type, $id)
+    public function send($deviceToken, $title, $message, $platform, $type, $after_open, $customize)
     {
-        $service = self::getSerivce($platform);
-
-        $push = new $service(static::$_platform[$platform]);
-        if (method_exists($push, 'sendMessage')) {
-            return $push->sendMessage($deviceToken, $title, $message, $type, $id);
+        // 得到相关的类名称
+        $service = $this->getSerivce($platform);
+        $config = static::$_config["platform"][$platform];
+        // 获得redis配置，有些不需要
+        $config["redis"] = static::$_config["redis"]["default"];
+        /**
+         *
+         * @var \Mofing\DoNewsPush\Services\BasePush $push
+         */
+        $push = new $service($config);
+        $push->setPkgName(static::$_config["pkgname"]);
+        if (! is_array($after_open)) {
+            // 也许存在多个参数
+            $after_open = [
+                $after_open,
+                "",
+                ""
+            ];
         }
-        
-        return false;
+        return $push->sendMessage($deviceToken, $title, $message, $type, $after_open, $customize);
     }
 
     /**
      * 根据用户ID设置用户token
      */
-    public static function setToken($platform, $app_id, $user_id, $deviceToken)
+    public function setToken($platform, $app_id, $user_id, $deviceToken)
     {
-        if (!$app_id || !$user_id || !$deviceToken || !$platform) {
+        if (! $app_id || ! $user_id || ! $deviceToken || ! $platform) {
             return false;
         }
-        static::$_redis->set($app_id . ":" . $user_id . ":regid:", $platform .":". $deviceToken);
+        $this->_redis->set($app_id . ":" . $user_id, $platform . ":" . $deviceToken);
         return true;
     }
-
 
     /**
      * 根据用户ID获取用户token
      */
-    public static function getToken($app_id, $user_id)
+    public function getToken($app_id, $user_id)
     {
-        return static::$_redis->get($app_id . ":" . $user_id . ":regid:");
+        return $this->_redis->get($app_id . ":" . $user_id);
     }
 
     /**
      * 根据用户ID设置用户token
      */
-    public static function setDeviceToken($app_id, $list_name, $platform, $deviceToken)
+    public function setDeviceToken($app_id, $list_name, $platform, $deviceToken)
     {
-        return static::$_redis->lpush($app_id.$list_name, $platform.':'.$deviceToken);
+        return $this->_redis->lpush($app_id . $list_name, $platform . ':' . $deviceToken);
     }
 
     /**
      * 根据用户ID设置用户token
      */
-    public static function getDeviceToken($app_id, $list_name, $page = 1, $pageSize = 100)
+    public function getDeviceToken($app_id, $list_name, $page = 1, $pageSize = 100)
     {
-        return static::$_redis->lrange($app_id.$list_name, ($page-1)*$pageSize ,$pageSize);
+        return $this->_redis->lrange($app_id . $list_name, ($page - 1) * $pageSize, $pageSize);
     }
 
-    //返回列表长度
-    public static function getListLen($app_id, $list_name)
+    // 返回列表长度
+    public function getListLen($app_id, $list_name)
     {
-        return static::$_redis->llen($app_id.$list_name);
+        return $this->_redis->llen($app_id . $list_name);
     }
 
-    public static function success()
+    public function success()
     {
         throw new PushException("success", 200);
     }
 
-    public static function error()
+    public function error()
     {
         throw new PushException("参数错误", 405);
     }
