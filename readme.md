@@ -6,7 +6,7 @@ composer require mofing/donews-push
 
 ## 配置
 - 本拓展包中使用 redis 保存 客户端Token 
-在自己的项目中设置全局变量CONFIG,用来存放.env全局变量
+- 在自己的项目中设置全局变量CONFIG,用来存放.env全局变量
 
 ```
 if (!defined('DS')) {
