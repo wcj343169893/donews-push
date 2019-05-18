@@ -3,6 +3,8 @@ namespace Mofing\DoNewsPush\Services;
 
 /**
  * 小米推送类
+ * 1.通知栏通知，在app未启动条件下，能收到通知，但是不能传递给app
+ * 2.透传消息,在app清除情况下，无法收到通知和内容
  *
  * @author Wenchaojun <343169893@qq.com>
  * @link https://dev.mi.com/console/doc/detail?pId=1163
@@ -49,7 +51,12 @@ class XiaomiPush extends BasePush
             ],
             'data' => $payload
         ]);
-        return $response->getResponseArray();
+        $this->result =  $response->getResponseArray();
+        //"code": integer，0表示成功，非0表示失败。
+        if(!empty($this->result) && empty($this->result["code"])){
+            return $this->result["trace_id"];
+        }
+        return false;
     }
 
     /**
@@ -114,14 +121,18 @@ class XiaomiPush extends BasePush
     public function getAfterOpen($go_after)
     {
         // 预定义通知栏消息的点击行为，
-        // 1 = 打开 app 的 Launcher Activity，// go_app
-        // 2 = 打开 app 的任一 Activity（还需要 extra.intent_uri）,// go_custom
-        // 3 = 打开网页（还需要传入 extra.web_uri）// go_url
+        //“1″：通知栏点击后打开app的Launcher Activity。
+        //“2″：通知栏点击后打开app的任一Activity（开发者还需要传入extra.intent_uri）。
+        //“3″：通知栏点击后打开网页（开发者还需要传入extra.web_uri）。
         list ($type, $param) = $go_after;
         if ($type == "go_custom") {
+            //相当于小米测试页面的由应用客户端自定义 ：0
+           return [];
+        } elseif ($type == "go_page") {
             return [
-                'extra.notify_effect' => 2,
-                'extra.intent_uri' => sprintf('intent:#Intent;component=%s;end', empty($param) ? $this->intentUri : $param)
+                'extra.notify_effect' =>2,
+                //abao://push?或者intent:#Intent;action=com.a.b.shot;end
+                'extra.intent_uri' =>$param// sprintf('intent:#Intent;component=%s;end', empty($param) ? $this->intentUri : $param)
             ];
         } elseif ($type == "go_url") {
             // Action的type为2的时候表示打开URL地址
@@ -132,7 +143,8 @@ class XiaomiPush extends BasePush
         }
         // 需要拉起的应用包名，必须和注册推送的包名一致。
         return [
-            'extra.notify_effect' => 1
+            'extra.notify_effect' => 1,
+            'extra.intent_uri' =>""
         ];
     }
 

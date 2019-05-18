@@ -1,34 +1,32 @@
 <?php
 namespace Mofing\DoNewsPush\Services;
 
-use Redis;
-use Mofing\DoNewsPush\Contracts\PushInterface;
-
-class VivoPush implements PushInterface
+/**
+ * vivo系统通知,只有通知栏通知，点击之后，才能传递到自己的app
+ * 
+ * @author Wenchaojun <343169893@qq.com>
+ * @link https://swsdl.vivo.com.cn/appstore/developer/uploadfile/20190418/0d23g6/PUSH-UPS-API%E6%8E%A5%E5%8F%A3%E6%96%87%E6%A1%A3%20-%202.4.3.1%E7%89%88.pdf
+ */
+class VivoPush extends BasePush
 {
 
-    private $_accessToken;
+    /**
+     * 授权获得accesstoken的地址
+     *
+     * @var string
+     */
+    var $_authUrl = "https://api-push.vivo.com.cn/message/auth";
 
-    private $_appId;
+    /**
+     * 发送消息的地址
+     *
+     * @var string
+     */
+    var $_sendUrl = "https://api-push.vivo.com.cn/message/send";
 
-    private $_appKey;
-
-    private $_appSecret;
-
-    private $_http;
-
-    private $_sign;
-
-    private $_time;
-
-    private $_redis;
-
-    private $_url = "https://api-push.vivo.com.cn";
-
-    private $_headers = array(
-        "Content-type: application/json;charset='utf-8'"
-    );
-
+    var $_authCacheKey = "vivo_push_authtoken";
+    
+    var $_httpHeaderContentType="application/json";
     /**
      * 构造函数。
      *
@@ -37,111 +35,137 @@ class VivoPush implements PushInterface
      */
     public function __construct($config = null)
     {
-        if (! empty(config('push.platform.vivo.appId'))) {
-            $this->_appId = config('push.platform.vivo.appId');
-        } else {
-            throw new \Exception('Cannot found configuration: vivo.appId!');
-        }
-        if (! empty(config('push.platform.vivo.appKey'))) {
-            $this->_appKey = config('push.platform.vivo.appKey');
-        } else {
-            throw new \Exception('Cannot found configuration: vivo.appKey!');
-        }
-        if (! empty(config('push.platform.vivo.appSecret'))) {
-            $this->_appSecret = config('push.platform.vivo.appSecret');
-        } else {
-            throw new \Exception('Cannot found configuration: vivo.appSecret!');
-        }
-        $this->_redis = new Redis(config("push.redis.client"), config("push.redis"));
+        parent::__construct($config);
+        // 连接redis服务器，用来存储accessToken
+        $this->getRedisConnection();
     }
 
     /**
-     * 请求新的 Access Token。
+     * 点击跳转类型 1：打开 APP 首页 2：打开链接 3：自定义 4:打开 app 内指定页面
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Contracts\PushInterface::getAfterOpen()
      */
-    private function _getAccessToken()
+    public function getAfterOpen($go_after)
     {
-        $this->_accessToken = $this->_redis->get("vivo:authToekn:");
-        if (! $this->_accessToken) {
-            $this->_getTime();
-            $sign = md5($this->_appId . $this->_appKey . $this->_time . $this->_appSecret);
-            
-            $data = [
-                "appId" => $this->_appId,
-                "appKey" => $this->_appKey,
-                "timestamp" => $this->_time,
-                "sign" => $sign
+        list ($type, $param) = $go_after;
+        if ($type == "go_custom") {
+            return [
+                'skipType' => 3,
+                'skipContent' => json_encode($param)
             ];
-            
-            $res = $this->curlPost($this->_url . '/message/auth', json_encode($data), $this->_headers);
-            $res = json_decode($res, 1);
-            
-            if ($res['result'] != '0') {
-                throw new \Exception($res['desc']);
-            }
-            $this->_accessToken = $res['authToken'];
-            
-            $this->_redis->setex("vivo:authToekn:", 3600, $this->_accessToken);
+        } elseif ($type == "go_page") {
+            return [
+                'skipType' => 4,
+                'skipContent' => ($param)
+            ];
+        } elseif ($type == "go_url") {
+            // Action的type为2的时候表示打开URL地址,跳转内容最大1000 个字符
+            return [
+                'skipType' => 2,
+                'skipContent' => $param
+            ];
         }
-    }
-
-    private function _getTime()
-    {
-        list ($msec, $sec) = explode(' ', microtime());
-        $this->_time = (float) sprintf('%.0f', (floatval($msec) + floatval($sec)) * 1000);
-    }
-
-    /**
-     * curlPost
-     */
-    private function curlPost($url, $data, $headers)
-    {
-        $ch = curl_init(); // 初始化curl
-        curl_setopt($ch, CURLOPT_URL, $url); // 抓取指定网页
-        curl_setopt($ch, CURLOPT_HEADER, 0); // 设置header
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // 要求结果为字符串且输出到屏幕上
-        curl_setopt($ch, CURLOPT_POST, 1); // post提交方式
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        $result = curl_exec($ch); // 运行curl
-        curl_close($ch);
-        
-        return $result;
+        // 需要拉起的应用包名，必须和注册推送的包名一致。
+        return [
+            'skipType' => 1,
+            'skipContent' => $this->pkgName
+        ];
     }
 
     /**
      * 发送vivo推送消息。
      * 
-     * @param
-     *            $deviceToken
-     * @param
-     *            $title
-     * @param
-     *            $message
-     * @return Response
-     * @throws
+     * {@inheritdoc}
      *
+     * @see \Mofing\DoNewsPush\Services\BasePush::sendMessage()
      */
-    public function sendMessage($deviceToken, $title, $message, $type, $id)
+    public function sendMessage($deviceToken, $title, $message, $type, $after_open, $customize)
     {
-        $this->_getAccessToken();
         $data = [
             // 用户ID
-            'regId' => $deviceToken,
-            "notifyType" => '2',
             "title" => $title,
             "content" => $message,
-            "skipType" => "1",
-            "requestId" => $this->_accessToken,
-            // 自定义参数
-            "clientCustomMap" => array(
-                'type' => $type,
-                'id' => $id
-            )
+            "timeToLive" => 96400,
+            "notifyType" => 4, // 通知类型 1:无，2:响铃，3:振动，4:响铃和振动
+                                 // 自定义参数
+            "clientCustomMap" => $customize
         ];
+        // 合并发送方式
+        $data = array_merge($data, $this->getHttpSendType($deviceToken));
+        // 点击跳转类型
+        $data = array_merge($data, $this->getAfterOpen($after_open));
+        // 用户请求唯一标识 最大 64 字符
+        $data["requestId"] = md5(json_encode($data) . time());
         
-        $this->_headers[] = "authToken:" . $this->_accessToken;
-        
-        $res = $this->curlPost($this->_url . '/message/send', json_encode($data), $this->_headers);
-        return json_decode($res, 1);
+        // 获取token
+        $accessToken = $this->getAccessToken();
+        $response = $this->_http->post($this->_sendUrl, [
+            'headers' => [
+                "Content-Type" => "application/json",
+                "authToken" => $accessToken
+            ],
+            'data' => json_encode($data)
+        ]);
+        $this->result = $response->getResponseArray();
+        // 接口调用是否成功的状态码 0 成功，非 0 失败
+        if (! empty($this->result) && empty($this->result["result"])) {
+            return $this->result["taskId"];
+        }
+        return false;
     }
+
+    /**
+     * 获得发送方式和地址
+     *
+     * @param string $deviceToken            
+     * @return []
+     */
+    public function getHttpSendType($deviceToken)
+    {
+        if ($this->httpSendType == "alias") {
+            return [
+                "alias" => $deviceToken
+            ];
+        } else {
+            return [
+                "regId" => $deviceToken
+            ];
+        }
+    }
+
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \Mofing\DoNewsPush\Services\BasePush::getAuthData()
+     */
+    protected function getAuthData()
+    {
+        $t = $this->getTime();
+        $data = [
+            "appId" => $this->appId,
+            "appKey" => $this->appKey,
+            "timestamp" => $t
+        ];
+        $sign = md5(implode("", $data) . $this->appSecret);
+        $data["sign"] = $sign;
+        return json_encode($data);
+    }
+
+    /**
+     * 
+     * {@inheritDoc}
+     * @see \Mofing\DoNewsPush\Services\BasePush::getResponseToken()
+     */
+    protected function getResponseToken($data)
+    {
+        // 接口调用是否成功的状态码 0 成功，非 0 失败
+        if (! empty($data["result"])) {
+            return false;
+        }
+        // 当鉴权成功时才会有该字段，推送消息时，需要提供authToken，有效期默认为 1 天，过期后无法使用
+        return $data["authToken"];
+    }
+
 }

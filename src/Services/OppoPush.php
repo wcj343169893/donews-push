@@ -1,33 +1,16 @@
 <?php
 namespace Mofing\DoNewsPush\Services;
 
-use Illuminate\Redis\RedisManager as Redis;
-use Mofing\DoNewsPush\Contracts\PushInterface;
-
-class OppoPush implements PushInterface
+class OppoPush extends BasePush
 {
 
-    private $_accessToken;
+    var $masterSecret = "";
 
-    private $_masterSecret;
+    var $_authUrl = "https://api.push.oppomobile.com/server/v1/auth";
 
-    private $_appKey;
+    var $_sendUrl = "https://api.push.oppomobile.com/server/v1/message/notification/unicast";
 
-    private $_clickActionActivity;
-
-    private $_http;
-
-    private $_sign;
-
-    private $_time;
-
-    private $_redis;
-
-    private $_url = "https://api.push.oppomobile.com/server/v1/";
-
-    private $_headers = array(
-        "Content-type: application/x-www-form-urlencoded;charset='utf-8'"
-    );
+    var $_authCacheKey = "oppo_push_authtoken";
 
     /**
      * 构造函数。
@@ -37,107 +20,145 @@ class OppoPush implements PushInterface
      */
     public function __construct($config = null)
     {
-        if (! empty(config('push.platform.oppo.appKey'))) {
-            $this->_appKey = config('push.platform.oppo.appKey');
-        } else {
-            throw new \Exception('Cannot found configuration: oppo.appKey!');
-        }
-        if (! empty(config('push.platform.oppo.masterSecret'))) {
-            $this->_masterSecret = config('push.platform.oppo.masterSecret');
-        } else {
-            throw new \Exception('Cannot found configuration: oppo.masterSecret!');
-        }
-        if (! empty(config('push.platform.oppo.clickActionActivity'))) {
-            $this->_clickActionActivity = config('push.platform.oppo.clickActionActivity');
-        } else {
-            throw new \Exception('Cannot found configuration: oppo.clickActionActivity!');
-        }
-        $this->_redis = new Redis(config("push.redis.client"), config("push.redis"));
+        parent::__construct($config);
+        // 连接redis服务器，用来存储accessToken
+        $this->getRedisConnection();
     }
 
     /**
-     * 请求新的 Access Token。
-     */
-    private function _getAccessToken()
-    {
-        $this->_getTime();
-        $sign = hash('sha256', $this->_appKey . $this->_time . $this->_masterSecret);
-        
-        $data['app_key'] = $this->_appKey;
-        $data['timestamp'] = $this->_time;
-        $data['sign'] = $sign;
-        
-        $res = $this->curlPost($this->_url . 'auth', $data, null);
-        $res = json_decode($res, 1);
-        
-        if ($res['code'] != '0') {
-            throw new \Exception($res['desc']);
-        }
-        $this->_accessToken = $res['data']['authToken'];
-    }
-
-    private function _getTime()
-    {
-        list ($msec, $sec) = explode(' ', microtime());
-        $this->_time = (float) sprintf('%.0f', (floatval($msec) + floatval($sec)) * 1000);
-    }
-
-    /**
-     * curlPost
-     */
-    private function curlPost($url, $data, $headers)
-    {
-        $ch = curl_init(); // 初始化curl
-        curl_setopt($ch, CURLOPT_URL, $url); // 抓取指定网页
-        curl_setopt($ch, CURLOPT_HEADER, 0); // 设置header
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // 要求结果为字符串且输出到屏幕上
-        curl_setopt($ch, CURLOPT_POST, 1); // post提交方式
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        $result = curl_exec($ch); // 运行curl
-        curl_close($ch);
-        
-        return $result;
-    }
-
-    /**
-     * 发送vivo推送消息。
      *
-     * @param
-     *            $deviceToken
-     * @param
-     *            $title
-     * @param
-     *            $message
-     * @return Response
-     * @throws
+     * {@inheritdoc}
      *
+     * @see \Mofing\DoNewsPush\Contracts\PushInterface::sendMessage()
      */
-    public function sendMessage($deviceToken, $title, $message, $type, $id)
+    public function sendMessage($deviceToken, $title, $message, $type, $after_open, $customize)
     {
-        $this->_getAccessToken();
+        $accessToken = $this->getAccessToken();
         
-        $notification['title'] = $title;
-        $notification['content'] = $message;
-        $notification['sub_title'] = $title;
-        $notification['action_parameters'] = json_encode([
+        $notification = [
+            'title' => $title,
+            'content' => $message,
+            'sub_title' => ""
+        ];
+        //动作参数，打开应用内页或网页时传递
+       /*  $notification['action_parameters'] = json_encode([
             'type' => $type,
             'id' => $id
+        ]); */
+        //点击动作类型 0，启动应用；1，打开应 用内页（activity 的 intent action）；2， 打开网页；4，打开应用内页（activity）； 【非必填，默认值为 0】;5,Intent scheme URL
+        $notification=array_merge($notification,$this->getAfterOpen($after_open));
+        // 合并目标类型
+        $msg = $this->getHttpSendType($deviceToken);
+        $msg["notification"] = $notification;
+        
+        $data['auth_token'] = $accessToken;
+        $data['message'] = json_encode($msg);
+        
+        $response = $this->_http->post($this->_sendUrl, [
+            'headers' => [
+                "Content-Type" => "application/x-www-form-urlencoded"
+            ],
+            'data' => $data
         ]);
         
-        $notification['click_action_type'] = 1;
-        $notification['click_action_activity'] = $this->_clickActionActivity;
-        
-        $message['target_type'] = 2;
-        $message['target_value'] = $deviceToken;
-        $message['notification'] = $notification;
-        
-        $data['auth_token'] = $this->_accessToken;
-        $data['message'] = json_encode($message);
-        $data = http_build_query($data);
-        $url = $this->_url . 'message/notification/unicast';
-        
-        $res = $this->curlPost($url, $data, $this->_headers);
-        return json_decode($res, 1);
+        $this->result = $response->getResponseArray();
+        if(!empty($this->result) && $this->result["code"]=="80000000"){
+            return $this->result["requestId"];
+        }
+        return false;
+    }
+    /**
+     * 点击动作类型 
+     * 0，启动应用；
+     * 1，打开应 用内页（activity 的 intent action）；
+     * 2， 打开网页；
+     * 4，打开应用内页（activity）； 【非必填，默认值为 0】;
+     * 5,Intent scheme URL
+     * {@inheritDoc}
+     * @see \Mofing\DoNewsPush\Services\BasePush::getAfterOpen()
+     */
+    public function getAfterOpen($go_after){
+        //click_action_type
+        //click_action_activity
+        //click_action_url
+        list ($type, $param) = $go_after;
+        if ($type == "go_custom") {
+            return [
+                'click_action_type' =>4,
+                //1 时这里填写 com.coloros.push.demo.internal
+                //4 时这里填写com.coloros.push.demo.component.InternalActivity
+                'click_action_activity' =>$param,
+            ];
+        } elseif ($type == "go_page") {
+            return [
+                'click_action_type' =>5,
+                //abao://push?或者intent:#Intent;action=com.a.b.shot;end
+                'click_action_url' =>$param// sprintf('intent:#Intent;component=%s;end', empty($param) ? $this->intentUri : $param)
+            ];
+        } elseif ($type == "go_url") {
+            return [
+                'click_action_type' => 2,
+                'click_action_url' => $param
+            ];
+        }
+        //go_app
+        return [
+            'click_action_type' => 0
+        ];
+    }
+
+    /**
+     * 目标类型 2:registration_id ;3: 别名推送alias_name;
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Services\BasePush::getHttpSendType()
+     */
+    public function getHttpSendType($deviceToken)
+    {
+        if ($this->httpSendType == "alias") {
+            return [
+                "target_type" => "alias_name",
+                "target_value" => $deviceToken
+            ];
+        }
+        return [
+            "target_type" => "registration_id",
+            "target_value" => $deviceToken
+        ];
+    }
+
+    /**
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Services\BasePush::getResponseToken()
+     */
+    protected function getResponseToken($data)
+    {
+        // 返回码,请参考平台返回码与接口返回码,0 Success 成功，只表明接口调用成功
+        if (! empty($data["code"])) {
+            return false;
+        }
+        // 当鉴权成功时才会有该字段，推送消息时，需要提供authToken，有效期默认为 1 天，过期后无法使用
+        return $data["data"]["auth_token"];
+    }
+
+    /**
+     *
+     * {@inheritdoc}
+     *
+     * @see \Mofing\DoNewsPush\Services\BasePush::getAuthData()
+     */
+    protected function getAuthData()
+    {
+        $t = $this->getTime();
+        $data = [
+            "app_key" => $this->appKey,
+            "timestamp" => $t
+        ];
+        $sign = hash("sha256", implode("", array_values($data)) . $this->masterSecret);
+        $data["sign"] = $sign;
+        return $data;
     }
 }

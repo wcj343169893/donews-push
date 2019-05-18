@@ -56,6 +56,7 @@ class Push implements DoNewsPusher
                 break;
             case 'vivo':
                 $service = "VivoPush";
+                break;
             case 'oppo':
                 $service = "OppoPush";
                 break;

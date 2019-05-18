@@ -6,6 +6,8 @@ use Mofing\DoNewsPush\Contracts\PushInterface;
 
 /**
  * 华为推送
+ * 1.通知栏通知，在app未启动条件下，能收到通知，但是不能传递给app
+ * 2.透传消息,在app清除情况下，无法收到通知和内容
  *
  * @author Wenchaojun <343169893@qq.com>
  * @link https://developer.huawei.com/consumer/cn/service/hms/catalog/huaweipush_agent.html?page=hmssdk_huaweipush_api_reference_agent_s2
@@ -26,7 +28,8 @@ class HmsPush extends BasePush
      * @var string
      */
     var $_sendUrl = "https://api.push.hicloud.com/pushsend.do";
-
+    
+    var $_authCacheKey="huawei_push_authtoken";
     /**
      * 构造函数。
      *
@@ -103,7 +106,11 @@ class HmsPush extends BasePush
                 'expire_time' => date("Y-m-d\TH:i", strtotime("+3 days"))
             ]
         ]);
-        return $response->getResponseArray();
+        $this->result = $response->getResponseArray();
+        if(!empty($this->result) && $this->result["code"]=="80000000"){
+            return $this->result["requestId"];
+        }
+        return false;
     }
 
     /**
@@ -159,45 +166,28 @@ class HmsPush extends BasePush
             ]
         ];
     }
-
+    
     /**
-     * 请求新的 Access Token。
-     *
-     * @param number $tryCount
-     *            可重试次数
-     * @throws \Exception
-     * @return string
+     * 
+     * {@inheritDoc}
+     * @see \Mofing\DoNewsPush\Services\BasePush::getAuthData()
      */
-    private function getAccessToken($tryCount = 1)
-    {
-        $key = $this->getCacheKey("huawei:authToekn");
-        $accessToken = $this->_redis->get($key);
-        if (! $accessToken) {
-            $data = [
-                'grant_type' => 'client_credentials',
-                'client_id' => $this->appId,
-                'client_secret' => $this->appSecret
-            ];
-            // 有很大几率会调用失败
-            $result = $this->_http->post($this->_authUrl, [
-                'data' => $data,
-                'headers' => [
-                    "Content-Type" => "application/x-www-form-urlencoded"
-                ]
-            ])->getResponseArray();
-            if (! isset($result['access_token'])) {
-                // 获取token失效
-                if ($tryCount < 1) {
-                    throw new \Exception($result['error_description']);
-                }
-                // 过一会儿重试
-                sleep(1);
-                return $this->getAccessToken($tryCount - 1);
-            }
-            $accessToken = $result['access_token'];
-            // 设置的缓存小于实际100秒，有利于掌控有效期
-            $this->_redis->setex($key, $result['expires_in'] - 100, $accessToken);
+    protected function getAuthData(){
+        return [
+            'grant_type' => 'client_credentials',
+            'client_id' => $this->appId,
+            'client_secret' => $this->appSecret
+        ];
+    }
+    /**
+     * 获取鉴权之后的token
+     * {@inheritDoc}
+     * @see \Mofing\DoNewsPush\Services\BasePush::getResponseToken()
+     */
+    protected function getResponseToken($data){
+        if(!isset($data['access_token'])){
+            return false;
         }
-        return $accessToken;
+        return $data['access_token'];
     }
 }

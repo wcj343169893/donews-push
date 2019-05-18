@@ -51,7 +51,8 @@ return [
         "vivo" => [
             "appId" => env("VIVO_APP_ID", null),
             "appKey" => env("VIVO_APP_KEY", null),
-            "appSecret" => env("VIVO_APP_SECRET", null)
+            "appSecret" => env("VIVO_APP_SECRET", null),
+            "httpSendType" => env("VIVO_APP_SEND_TYPE", "alias"),
         ],
         
         "meizu" => [
@@ -60,8 +61,11 @@ return [
         ],
         
         "oppo" => [
+            "appId" => env("OPPO_APP_ID", null),
             "appKey" => env("OPPO_APP_KEY", null),
-            "appSecret" => env("OPPO_MASTER_SECRET", null)
+            "appSecret" => env("OPPO_APP_SECRET", null),
+            "masterSecret" => env("OPPO_MASTER_SECRET", null),
+            "httpSendType" => env("OPPO_APP_SEND_TYPE", null)
         ]
     ]
 ];

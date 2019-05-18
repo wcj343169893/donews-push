@@ -53,17 +53,27 @@ class BasePush implements PushInterface
     var $_authUrl;
 
     /**
+     * token缓存key
+     * 
+     * @var string
+     */
+    var $_authCacheKey = "push";
+
+    /**
      * 发送消息的地址
      *
      * @var string
      */
     var $_sendUrl;
-    
+
     /**
      * 不同的发送消息类型
+     * 
      * @var string
      */
     var $httpSendType;
+
+    var $result;
 
     protected $_redisConfig = [
         'database' => 0,
@@ -107,6 +117,65 @@ class BasePush implements PushInterface
     public function sendMessage($deviceToken, $title, $message, $type, $after_open, $customize)
     {
         // TODO Auto-generated method stub
+    }
+
+    var $_httpHeaderContentType="application/x-www-form-urlencoded";
+    /**
+     * 请求新的 Access Token。
+     *
+     * @param number $tryCount
+     *            可重试次数
+     * @throws \Exception
+     * @return string
+     */
+    protected function getAccessToken($tryCount = 1)
+    {
+        $key = $this->getCacheKey($this->_authCacheKey);
+        $accessToken = $this->_redis->get($key);
+        if (! $accessToken) {
+            $data = $this->getAuthData();
+            // 有很大几率会调用失败
+            $result = $this->_http->post($this->_authUrl, [
+                'data' => $data,
+                'headers' => [
+                    "Content-Type" => $this->_httpHeaderContentType
+                ]
+            ])->getResponseArray();
+            $accessToken = $this->getResponseToken($result);
+            if (empty($accessToken)) {
+                // 获取token失效
+                if ($tryCount < 1) {
+                    throw new \Exception("获取token失败");
+                }
+                // 过一会儿重试
+                sleep(1);
+                return $this->getAccessToken($tryCount - 1);
+            }
+            // 设置的缓存小于实际100秒，有利于掌控有效期,默认缓存半小时,每天获取的机会还是很多的
+            $this->_redis->setex($key, 1800, $accessToken);
+        }
+        return $accessToken;
+    }
+
+    /**
+     * 获得鉴权请求post参数
+     * 
+     * @return array
+     */
+    protected function getAuthData()
+    {
+        return [];
+    }
+
+    /**
+     * 获取鉴权之后的token
+     * 
+     * @param [] $data            
+     * @return boolean
+     */
+    protected function getResponseToken($data)
+    {
+        return false;
     }
 
     /**
@@ -164,7 +233,7 @@ class BasePush implements PushInterface
 
     /**
      * 重构缓存key
-     * 
+     *
      * @param string $key            
      * @return string
      */
@@ -176,6 +245,16 @@ class BasePush implements PushInterface
         return $key;
     }
 
+    /**
+     * 根据发送类型，返回对应的字段
+     * 
+     * @param string $deviceToken            
+     */
+    public function getHttpSendType($deviceToken)
+    {
+        return [];
+    }
+
     public function setPkgName($name)
     {
         $this->pkgName = $name;
@@ -184,6 +263,21 @@ class BasePush implements PushInterface
     public function getPkgName()
     {
         return $this->pkgName;
+    }
+
+    public function getResult()
+    {
+        return $this->result;
+    }
+    /**
+     * 获取毫秒时间戳
+     *
+     * @return number
+     */
+    protected function getTime()
+    {
+        list ($msec, $sec) = explode(' ', microtime());
+        return (float) sprintf('%.0f', (floatval($msec) + floatval($sec)) * 1000);
     }
 }
 
