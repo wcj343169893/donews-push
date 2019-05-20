@@ -39,16 +39,23 @@ try {
     //华为测试
     //$result = $push->send("0862848040691494300003689500CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", "go_app", $pushData);
     //$result = $push->send("0860916034765707300003689500CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", ["go_app","com.mofing/mainActivity"], $pushData);
+    //$result = $push->send("0860916034765707300003689500CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", ["go_custom",""], $pushData);
+    //$result = $push->send("0860916034765707300003689500CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", "go_scheme", $pushData);
     //小米测试
-    //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "message", "go_app", $pushData);
+    //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "quiet", "go_custom", $pushData);
+    //透传测试ok
+    //$result = $push->send("1580855", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "quiet", "go_custom", $pushData);
     //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "message", "go_custom", $pushData);
-    $result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "message", "go_custom", $pushData);
+    //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "message", "go_custom", $pushData);
     //$result = $push->send("9115", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "message", ["go_custom","abao://push?"], $pushData);
     //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "message", ["go_custom","abao://push?"], $pushData);
     //vivo测试
-    //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "vivo", "message", "go_app", $pushData);
+    //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "vivo", "message", "go_page", $pushData);
     //oppo测试
-    //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", "message", "go_app", $pushData);
+    //$result = $push->send("CN_421c822c531b50a5d67803655e83a0ee", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", "message", ["go_page","com.abao.oppopush"], $pushData);
+    
+    //组合推送
+    $result =$push->unionSend(1433346, "CN_7c966fae247d75695ff6c26102f1f80d", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
     print_r($result);
 } catch (Exception $e) {
     print_r($e);

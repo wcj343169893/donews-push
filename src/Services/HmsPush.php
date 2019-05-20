@@ -55,6 +55,7 @@ class HmsPush extends BasePush
         date_default_timezone_set('PRC'); // 设置中国时区
         $time = time();
         // 构建 Payload
+        $this->customize = $customize;
         if (is_array($message)) {
             $payload = json_encode($message, JSON_UNESCAPED_UNICODE);
         } else if (is_string($message)) {
@@ -147,6 +148,13 @@ class HmsPush extends BasePush
                 'param' => [
                     // 'intent' => '#Intent;compo=com.wanmei.a9vg/.common.activitys.Activity;S.W=U;end'
                     'intent' => sprintf('#Intent;compo=%s;S.W=U;end', empty($param) ? $this->intentUri : $param)
+                ]
+            ];
+        } elseif ($type == "go_scheme") {
+            return [
+                'type' => 1,
+                'param' => [
+                    'intent' => 'abao://router/huawei?push='.urlencode(json_encode($this->customize,JSON_UNESCAPED_UNICODE))//sprintf('#Intent;compo=%s;S.W=U;end', empty($param) ? $this->intentUri : $param)
                 ]
             ];
         } elseif ($type == "go_url") {

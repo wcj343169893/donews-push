@@ -74,6 +74,8 @@ class BasePush implements PushInterface
     var $httpSendType;
 
     var $result;
+    
+    var $customize;
 
     protected $_redisConfig = [
         'database' => 0,

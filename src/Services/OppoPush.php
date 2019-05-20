@@ -47,23 +47,26 @@ class OppoPush extends BasePush
         ]); */
         //点击动作类型 0，启动应用；1，打开应 用内页（activity 的 intent action）；2， 打开网页；4，打开应用内页（activity）； 【非必填，默认值为 0】;5,Intent scheme URL
         $notification=array_merge($notification,$this->getAfterOpen($after_open));
+        //动作参数，打开应用内页或网页时传递 给应用或网页【JSON 格式，非必填】，        字符数不能超过 4K，示例：        {"key1":"value1","key2":"value2"}
+        $notification["action_parameters"]=["push"=>json_encode($customize,JSON_UNESCAPED_UNICODE)];
         // 合并目标类型
         $msg = $this->getHttpSendType($deviceToken);
         $msg["notification"] = $notification;
         
         $data['auth_token'] = $accessToken;
-        $data['message'] = json_encode($msg);
-        
+        $data['message'] = json_encode($msg,JSON_UNESCAPED_UNICODE);
+       
         $response = $this->_http->post($this->_sendUrl, [
             'headers' => [
                 "Content-Type" => "application/x-www-form-urlencoded"
             ],
             'data' => $data
         ]);
-        
         $this->result = $response->getResponseArray();
-        if(!empty($this->result) && $this->result["code"]=="80000000"){
-            return $this->result["requestId"];
+        if(!empty($this->result) && empty($this->result["code"])){
+            return $this->result["data"]["messageId"];
+        }else{
+            print_r($response);
         }
         return false;
     }
@@ -82,14 +85,21 @@ class OppoPush extends BasePush
         //click_action_activity
         //click_action_url
         list ($type, $param) = $go_after;
-        if ($type == "go_custom") {
+        if ($type == "go_page") {
+            //指定应用内页
             return [
-                'click_action_type' =>4,
+                'click_action_type' =>1,
                 //1 时这里填写 com.coloros.push.demo.internal
                 //4 时这里填写com.coloros.push.demo.component.InternalActivity
                 'click_action_activity' =>$param,
             ];
-        } elseif ($type == "go_page") {
+        } elseif ($type == "go_custom") {
+            return [
+                'click_action_type' =>4,
+                //com.abao.oppopush
+                'click_action_url' =>"com.abao.oppopush"
+            ];
+        } elseif ($type == "go_scheme") {
             return [
                 'click_action_type' =>5,
                 //abao://push?或者intent:#Intent;action=com.a.b.shot;end
@@ -117,13 +127,14 @@ class OppoPush extends BasePush
     public function getHttpSendType($deviceToken)
     {
         if ($this->httpSendType == "alias") {
+            //别名推送,暂时不支持
             return [
-                "target_type" => "alias_name",
+                "target_type" => 3,
                 "target_value" => $deviceToken
             ];
         }
         return [
-            "target_type" => "registration_id",
+            "target_type" => 2,
             "target_value" => $deviceToken
         ];
     }

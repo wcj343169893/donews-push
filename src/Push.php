@@ -109,6 +109,27 @@ class Push implements DoNewsPusher
         }
         return $push->sendMessage($deviceToken, $title, $message, $type, $after_open, $customize);
     }
+    
+    /**
+     * 联合推送,最后一次登录设备+小米透传，如果是小米手机，直接使用通知
+     * @param int $uid
+     * @param string $deviceToken
+     * @param string $title
+     * @param string $message
+     * @param string $platform
+     * @param [] $customize
+     */
+    public function unionSend($uid,$deviceToken, $title, $message, $platform, $customize)
+    {
+        $result = [];
+        if($platform=="xiaomi"){
+            $result = $this->send($deviceToken, $title, $message, "xiaomi", "message", "go_custom", $customize);
+        }else{
+            $result []= $this->send($uid, $title, $message, "xiaomi", "quiet", "go_custom", $customize);
+            $result []=$this->send($deviceToken, $title, $message, $platform, "message", "go_custom", $customize);
+        }
+        return $result;
+    }
 
     /**
      * 根据用户ID设置用户token
