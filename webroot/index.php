@@ -4,6 +4,16 @@ use Mofing\DoNewsPush\Push;
 require dirname(__DIR__) . '/config/paths.php';
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+// 读取环境变量
+if (file_exists(CONFIG . '.env')) {
+    $dotenv = new \josegonzalez\Dotenv\Loader([
+        CONFIG . '.env'
+    ]);
+    $dotenv->parse()
+    ->putenv()
+    ->toEnv()
+    ->toServer();
+}
 try {
     // 测试发送
     $push = new Push();
@@ -52,10 +62,10 @@ try {
     //vivo测试
     //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "vivo", "message", "go_page", $pushData);
     //oppo测试
-    //$result = $push->send("CN_421c822c531b50a5d67803655e83a0ee", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", "message", ["go_page","com.abao.oppopush"], $pushData);
+    $result = $push->send("CN_d586e3920ed442840f57da4ea506128e", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", "message", ["go_page","com.abao.oppopush"], $pushData);
     
     //组合推送
-    $result =$push->unionSend(1433346, "CN_7c966fae247d75695ff6c26102f1f80d", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
+    //$result =$push->unionSend(1433346, "CN_7c966fae247d75695ff6c26102f1f80d", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
     print_r($result);
 } catch (Exception $e) {
     print_r($e);

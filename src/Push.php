@@ -1,36 +1,17 @@
 <?php
 namespace Mofing\DoNewsPush;
 
-use Redis;
-use Mofing\DoNewsPush\Exceptions\PushException;
 use Mofing\DoNewsPush\Contracts\DoNewsPusher;
 
 class Push implements DoNewsPusher
 {
-
-    private static $_config = null;
-
-    /**
-     *
-     * @var \Redis
-     */
-    private $_redis = null;
+    private $_config = null;
 
     public function __construct()
     {
-        // 读取环境变量
-        if (file_exists(CONFIG . '.env')) {
-            $dotenv = new \josegonzalez\Dotenv\Loader([
-                CONFIG . '.env'
-            ]);
-            $dotenv->parse()
-                ->putenv()
-                ->toEnv()
-                ->toServer();
-        }
         // 得到相关配置
         $config = require_once dirname(__DIR__) . "/config/push.php";
-        static::$_config = $config;
+        $this->_config = $config;
     }
 
     /**
@@ -51,21 +32,15 @@ class Push implements DoNewsPusher
             case 'huawei':
                 $service = "HmsPush";
                 break;
-            case 'umeng':
-                $service = "UmengPush";
-                break;
             case 'vivo':
                 $service = "VivoPush";
                 break;
             case 'oppo':
                 $service = "OppoPush";
                 break;
-            case 'meizu':
-                $service = "MeizuPush";
-                break;
             default:
-                // 默认走友盟
-                $service = "UmengPush";
+                $service = "";
+                return false;
                 break;
         }
         return "Mofing\\DoNewsPush\\Services\\" . $service;
@@ -90,15 +65,18 @@ class Push implements DoNewsPusher
     {
         // 得到相关的类名称
         $service = $this->getSerivce($platform);
-        $config = static::$_config["platform"][$platform];
+        if(empty($service)){
+            return false;
+        }
+        $config = $this->_config["platform"][$platform];
         // 获得redis配置，有些不需要
-        $config["redis"] = static::$_config["redis"]["default"];
+        $config["redis"] = $this->_config["redis"]["default"];
         /**
          *
          * @var \Mofing\DoNewsPush\Services\BasePush $push
          */
         $push = new $service($config);
-        $push->setPkgName(static::$_config["pkgname"]);
+        $push->setPkgName($this->_config["pkgname"]);
         if (! is_array($after_open)) {
             // 也许存在多个参数
             $after_open = [
@@ -129,57 +107,5 @@ class Push implements DoNewsPusher
             $result []=$this->send($deviceToken, $title, $message, $platform, "message", "go_custom", $customize);
         }
         return $result;
-    }
-
-    /**
-     * 根据用户ID设置用户token
-     */
-    public function setToken($platform, $app_id, $user_id, $deviceToken)
-    {
-        if (! $app_id || ! $user_id || ! $deviceToken || ! $platform) {
-            return false;
-        }
-        $this->_redis->set($app_id . ":" . $user_id, $platform . ":" . $deviceToken);
-        return true;
-    }
-
-    /**
-     * 根据用户ID获取用户token
-     */
-    public function getToken($app_id, $user_id)
-    {
-        return $this->_redis->get($app_id . ":" . $user_id);
-    }
-
-    /**
-     * 根据用户ID设置用户token
-     */
-    public function setDeviceToken($app_id, $list_name, $platform, $deviceToken)
-    {
-        return $this->_redis->lpush($app_id . $list_name, $platform . ':' . $deviceToken);
-    }
-
-    /**
-     * 根据用户ID设置用户token
-     */
-    public function getDeviceToken($app_id, $list_name, $page = 1, $pageSize = 100)
-    {
-        return $this->_redis->lrange($app_id . $list_name, ($page - 1) * $pageSize, $pageSize);
-    }
-
-    // 返回列表长度
-    public function getListLen($app_id, $list_name)
-    {
-        return $this->_redis->llen($app_id . $list_name);
-    }
-
-    public function success()
-    {
-        throw new PushException("success", 200);
-    }
-
-    public function error()
-    {
-        throw new PushException("参数错误", 405);
     }
 }

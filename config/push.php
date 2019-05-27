@@ -1,71 +1,73 @@
 <?php
 
 /**
- *获取环境变量
+ *获取环境变量,避免与其他地方的冲突
  * @param string $name
  * @param string $default
  * @return string
  */
-function env($name, $default)
-{
-    $value = getenv($name);
-    if (! $value) {
-        $value = $default;
+if (!function_exists('envData')) {
+    function envData($name, $default)
+    {
+        $value = getenv($name);
+        if (! $value) {
+            $value = $default;
+        }
+        return $value;
     }
-    return $value;
 }
 return [
     'redis' => [
         'default' => [
-            'host' => env('REDIS_HOST', '127.0.0.1'),
-            'password' => env('REDIS_PASSWORD', null),
-            'port' => env('REDIS_PORT', 6379),
-            'database' => env('REDIS_DATABASE', 2)
+            'host' => envData('REDIS_HOST', '127.0.0.1'),
+            'password' => envData('REDIS_PASSWORD', null),
+            'port' => envData('REDIS_PORT', 6379),
+            'database' => envData('REDIS_DATABASE', 2)
         ]
     ],
-    "pkgname" => env("APP_PKG_NAME", ""),
+    "pkgname" => envData("APP_PKG_NAME", ""),
     "platform" => [
         "xiaomi" => [
-            "appSecret" => env("XIAOMI_APP_SECRET", null),
-            "intentUri" => env("XIAOMI_APP_INTENT_URI", null),
-            "httpSendType" => env("XIAOMI_APP_SEND_TYPE", "alias")
+            "appSecret" => envData("XIAOMI_APP_SECRET", null),
+            "intentUri" => envData("XIAOMI_APP_INTENT_URI", null),
+            "httpSendType" => envData("XIAOMI_APP_SEND_TYPE", "alias")
         ],
         
         "umeng" => [
-            "appKey" => env("UMENG_APP_KEY", null),
-            "appSecret" => env("UMENG_APP_MASTER_SECRET", null)
+            "appKey" => envData("UMENG_APP_KEY", null),
+            "appSecret" => envData("UMENG_APP_MASTER_SECRET", null)
         ],
         
         "huawei" => [
-            "appId" => env("HUAWEI_CLIENT_ID", null),
-            "appSecret" => env("HUAWEI_CLIENT_SECRET", null),
-            'intentUri' => env('HUAWEI_APP_INTENT', null)
+            "appId" => envData("HUAWEI_CLIENT_ID", null),
+            "appSecret" => envData("HUAWEI_CLIENT_SECRET", null),
+            'intentUri' => envData('HUAWEI_APP_INTENT', null)
         ],
         
         "apple" => [
-            "appId" => env("APNS_CERTIFICATE_PATH", null),
-            "appSecret" => env("APNS_CERTIFICATE_PASSPHRASE", null),
-            "appEnvironment" => env("APNS_ENVIRONMENT", "sandbox") // production
+            "appId" => envData("APNS_CERTIFICATE_PATH", null),
+            "appSecret" => envData("APNS_CERTIFICATE_PASSPHRASE", null),
+            "appEnvironment" => envData("APNS_ENVIRONMENT", "sandbox") // production
         ],
         
         "vivo" => [
-            "appId" => env("VIVO_APP_ID", null),
-            "appKey" => env("VIVO_APP_KEY", null),
-            "appSecret" => env("VIVO_APP_SECRET", null),
-            "httpSendType" => env("VIVO_APP_SEND_TYPE", "alias"),
+            "appId" => envData("VIVO_APP_ID", null),
+            "appKey" => envData("VIVO_APP_KEY", null),
+            "appSecret" => envData("VIVO_APP_SECRET", null),
+            "httpSendType" => envData("VIVO_APP_SEND_TYPE", "alias"),
         ],
         
         "meizu" => [
-            "appId" => env("MEIZU_APP_ID", null),
-            "appSecret" => env("MEIZU_APP_SECRET", null)
+            "appId" => envData("MEIZU_APP_ID", null),
+            "appSecret" => envData("MEIZU_APP_SECRET", null)
         ],
         
         "oppo" => [
-            "appId" => env("OPPO_APP_ID", null),
-            "appKey" => env("OPPO_APP_KEY", null),
-            "appSecret" => env("OPPO_APP_SECRET", null),
-            "masterSecret" => env("OPPO_MASTER_SECRET", null),
-            "httpSendType" => env("OPPO_APP_SEND_TYPE", null)
+            "appId" => envData("OPPO_APP_ID", null),
+            "appKey" => envData("OPPO_APP_KEY", null),
+            "appSecret" => envData("OPPO_APP_SECRET", null),
+            "masterSecret" => envData("OPPO_MASTER_SECRET", null),
+            "httpSendType" => envData("OPPO_APP_SEND_TYPE", null)
         ]
     ]
 ];
