@@ -58,7 +58,7 @@ class VivoPush extends BasePush
         } elseif ($type == "go_page") {
             return [
                 'skipType' => 4,
-                'skipContent' => ($param)
+                'skipContent' => json_encode($param)
             ];
         } elseif ($type == "go_url") {
             // Action的type为2的时候表示打开URL地址,跳转内容最大1000 个字符

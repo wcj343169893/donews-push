@@ -97,7 +97,7 @@ class OppoPush extends BasePush
             return [
                 'click_action_type' =>4,
                 //com.abao.oppopush
-                'click_action_url' =>"com.abao.oppopush"
+                'click_action_url' =>$this->intentUri
             ];
         } elseif ($type == "go_scheme") {
             return [

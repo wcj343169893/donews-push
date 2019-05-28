@@ -63,6 +63,7 @@ class Push implements DoNewsPusher
      */
     public function send($deviceToken, $title, $message, $platform, $type, $after_open, $customize)
     {
+        $platform=strtolower($platform);
         // 得到相关的类名称
         $service = $this->getSerivce($platform);
         if(empty($service)){
@@ -86,6 +87,31 @@ class Push implements DoNewsPusher
             ];
         }
         return $push->sendMessage($deviceToken, $title, $message, $type, $after_open, $customize);
+    }
+    /**
+     * 消息栏提示，点击消息栏，跳转到指定页面
+     * @param string $deviceToken
+     * @param string $title
+     * @param string $message
+     * @param string $platform
+     * @param [] $customize
+     * @return boolean
+     */
+    public function sendWithClick($deviceToken, $title, $message, $platform, $customize){
+        $platform=strtolower($platform);
+        //获得平台的配置
+        $config = $this->_config["platform"][$platform];
+        if($platform=="huawei"){
+            return $this->send($deviceToken, $title, $message, $platform, "message", "go_scheme", $customize);
+        }elseif ($platform=="oppo"){
+            return $this->send($deviceToken,$title, $message, $platform, "message", ["go_page",$config["intentUri"]], $customize);
+        }elseif ($platform=="xiaomi"){
+            return $this->send($deviceToken, $title, $message, $platform, "message", "go_custom", $customize);
+        }elseif ($platform=="vivo"){
+            return $this->send($deviceToken, $title, $message, $platform, "message", ["go_page",["client"=>"donews-push"]], ["push"=>$customize]);
+        }else{
+            return false;
+        }
     }
     
     /**

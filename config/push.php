@@ -67,6 +67,7 @@ return [
             "appKey" => envData("OPPO_APP_KEY", null),
             "appSecret" => envData("OPPO_APP_SECRET", null),
             "masterSecret" => envData("OPPO_MASTER_SECRET", null),
+            "intentUri" => envData("OPPO_APP_INTENT_URI", null),
             "httpSendType" => envData("OPPO_APP_SEND_TYPE", null)
         ]
     ]

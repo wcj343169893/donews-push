@@ -154,7 +154,8 @@ class HmsPush extends BasePush
             return [
                 'type' => 1,
                 'param' => [
-                    'intent' => 'abao://router/huawei?push='.urlencode(json_encode($this->customize,JSON_UNESCAPED_UNICODE))//sprintf('#Intent;compo=%s;S.W=U;end', empty($param) ? $this->intentUri : $param)
+                    //abao://router/huawei
+                    'intent' =>sprintf("%s?push=%s",$this->intentUri,urlencode(json_encode($this->customize,JSON_UNESCAPED_UNICODE)))
                 ]
             ];
         } elseif ($type == "go_url") {
