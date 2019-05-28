@@ -1,4 +1,4 @@
-# DoNews APP推送
+# DoNews APP推送 现在仅支持:华为，oppo，小米，vivo
 ## 安装
 ```
 composer require mofing/donews-push
@@ -39,10 +39,6 @@ XIAOMI_APP_SECRET=""
 XIAOMI_APP_INTENT_URI=""
 XIAOMI_APP_SEND_TYPE="alias"
 
-## umeng push
-UMENG_APP_KEY=""
-UMENG_APP_MASTER_SECRET=""
-
 ## apple push
 APNS_CERTIFICATE_PATH=""
 APNS_CERTIFICATE_PASSPHRASE=""
@@ -53,13 +49,12 @@ VIVO_APP_ID=""
 VIVO_APP_KEY=""
 VIVO_APP_SECRET=""
 
-## meizu push
-MEIZU_APP_ID=""
-MEIZU_APP_SECRET=""
-
 ## oppo push
 OPPO_APP_KEY=""
 OPPO_MASTER_SECRET=""
+OPPO_MASTER_SECRET=""
+OPPO_APP_SEND_TYPE="registration"
+OPPO_APP_INTENT_URI="com.oppopush"
 ```
 
 ## 独立测试使用nginx+php5.6

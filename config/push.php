@@ -33,11 +33,6 @@ return [
             "httpSendType" => envData("XIAOMI_APP_SEND_TYPE", "alias")
         ],
         
-        "umeng" => [
-            "appKey" => envData("UMENG_APP_KEY", null),
-            "appSecret" => envData("UMENG_APP_MASTER_SECRET", null)
-        ],
-        
         "huawei" => [
             "appId" => envData("HUAWEI_CLIENT_ID", null),
             "appSecret" => envData("HUAWEI_CLIENT_SECRET", null),
@@ -55,11 +50,6 @@ return [
             "appKey" => envData("VIVO_APP_KEY", null),
             "appSecret" => envData("VIVO_APP_SECRET", null),
             "httpSendType" => envData("VIVO_APP_SEND_TYPE", "alias"),
-        ],
-        
-        "meizu" => [
-            "appId" => envData("MEIZU_APP_ID", null),
-            "appSecret" => envData("MEIZU_APP_SECRET", null)
         ],
         
         "oppo" => [
