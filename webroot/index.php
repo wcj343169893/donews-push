@@ -71,7 +71,7 @@ try {
     //$result[] =$push->sendWithClick("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", $pushData);
     //$result[] =$push->sendWithClick("0862848040691494300003689500CN01", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "huawei", $pushData);
     //$result[] =$push->sendWithClick("99", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "vivo", $pushData);
-    //$result[] =$push->sendWithClick("CN_1922ffcc67487d7ffd64708515f6d38f", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
+    $result[] =$push->sendWithClick("CN_1922ffcc67487d7ffd64708515f6d38f", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
     print_r($result);
 } catch (Exception $e) {
     print_r($e);

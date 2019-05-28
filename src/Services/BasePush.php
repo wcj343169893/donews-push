@@ -213,6 +213,9 @@ class BasePush implements PushInterface
     {
         try {
             $this->_redis = new Redis();
+            if (!empty($this->_redisConfig['host'])) {
+                $this->_redisConfig['server'] = $this->_redisConfig['host'];
+            }
             if (! empty($this->_redisConfig['unix_socket'])) {
                 $return = $this->_redis->connect($this->_redisConfig['unix_socket']);
             } elseif (empty($this->_redisConfig['persistent'])) {

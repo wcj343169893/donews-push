@@ -6,12 +6,15 @@ use Mofing\DoNewsPush\Contracts\DoNewsPusher;
 class Push implements DoNewsPusher
 {
     private $_config = null;
-
+    private static $config=null;
+    
     public function __construct()
     {
         // 得到相关配置
-        $config = require_once dirname(__DIR__) . "/config/push.php";
-        $this->_config = $config;
+        if(empty(self::$config)){
+            self::$config = include dirname(__DIR__) . "/config/push.php";
+        }
+        $this->_config = self::$config;
     }
 
     /**
