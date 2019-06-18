@@ -38,6 +38,7 @@ class OppoPush extends BasePush
         $notification = [
             'title' => $title,
             'content' => $message,
+            'channel_id' => $this->channelId,
             'sub_title' => ""
         ];
         //动作参数，打开应用内页或网页时传递
