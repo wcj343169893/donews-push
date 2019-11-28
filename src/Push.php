@@ -103,6 +103,10 @@ class Push implements DoNewsPusher
     public function sendWithClick($deviceToken, $title, $message, $platform, $customize){
         $platform=strtolower($platform);
         //获得平台的配置
+        if(empty($this->_config["platform"][$platform])){
+            //不支持的类型
+            return false;
+        }
         $config = $this->_config["platform"][$platform];
         if($platform=="huawei"){
             return $this->send($deviceToken, $title, $message, $platform, "message", "go_scheme", $customize);
