@@ -162,7 +162,7 @@ class Push implements DoNewsPusher
          */
         $push = new $service($config);
         try {
-            return $push->getAccessToken();
+            return $push->getAccessToken(1,true);
         } catch (\Exception $e) {
             return $e->getMessage();
         }

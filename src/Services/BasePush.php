@@ -130,11 +130,11 @@ class BasePush implements PushInterface
      * @throws \Exception
      * @return string
      */
-    public function getAccessToken($tryCount = 1)
+    public function getAccessToken($tryCount = 1,$refresh=false)
     {
         $key = $this->getCacheKey($this->_authCacheKey);
         $accessToken = $this->_redis->get($key);
-        if (! $accessToken) {
+        if (! $accessToken || $refresh) {
             $data = $this->getAuthData();
             // 有很大几率会调用失败
             $result = $this->_http->post($this->_authUrl, [
@@ -151,7 +151,7 @@ class BasePush implements PushInterface
                 }
                 // 过一会儿重试
                 sleep(1);
-                return $this->getAccessToken($tryCount - 1);
+                return $this->getAccessToken($tryCount - 1,$refresh);
             }
             // 设置的缓存小于实际100秒，有利于掌控有效期,默认缓存半小时,每天获取的机会还是很多的
             $this->_redis->setex($key, 1800, $accessToken);
