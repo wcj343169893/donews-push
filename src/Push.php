@@ -141,4 +141,30 @@ class Push implements DoNewsPusher
         }
         return $result;
     }
+    /**
+     * 定时刷新token
+     * @param string $platform
+     * @return boolean|string
+     */
+    public function refreshToken($platform){
+        $platform=strtolower($platform);
+        // 得到相关的类名称
+        $service = $this->getSerivce($platform);
+        if(empty($service)){
+            return false;
+        }
+        $config = $this->_config["platform"][$platform];
+        // 获得redis配置，有些不需要
+        $config["redis"] = $this->_config["redis"]["default"];
+        /**
+         *
+         * @var \Mofing\DoNewsPush\Services\BasePush $push
+         */
+        $push = new $service($config);
+        try {
+            return $push->getAccessToken();
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+    }
 }

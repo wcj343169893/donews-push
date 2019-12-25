@@ -130,7 +130,7 @@ class BasePush implements PushInterface
      * @throws \Exception
      * @return string
      */
-    protected function getAccessToken($tryCount = 1)
+    public function getAccessToken($tryCount = 1)
     {
         $key = $this->getCacheKey($this->_authCacheKey);
         $accessToken = $this->_redis->get($key);

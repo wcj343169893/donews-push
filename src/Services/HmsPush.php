@@ -104,7 +104,7 @@ class HmsPush extends BasePush
                 'nsp_ts' => $time, // 服务请求时间戳
                 'device_token_list' => json_encode($deviceToken),
                 'payload' => $payload,
-                'expire_time' => date("Y-m-d\TH:i", strtotime("+3 days"))
+                'expire_time' => date('Y-m-d\TH:i', strtotime("+3 days"))
             ]
         ]);
         $this->result = $response->getResponseArray();
