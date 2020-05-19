@@ -3,11 +3,11 @@ use Mofing\DoNewsPush\Push;
 
 require dirname(__DIR__) . '/config/paths.php';
 require dirname(__DIR__) . '/vendor/autoload.php';
-
+$pla = "rider";
 // 读取环境变量
-if (file_exists(CONFIG . '.env')) {
+if (file_exists(CONFIG . $pla.'.env')) {
     $dotenv = new \josegonzalez\Dotenv\Loader([
-        CONFIG . '.env'
+        CONFIG . $pla.'.env'
     ]);
     $dotenv->parse()
     ->putenv()
@@ -51,7 +51,9 @@ try {
     //$result = $push->send("0862848040691494300003689500CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", "go_app", $pushData);
     //$result = $push->send("0860916034765707300003689500CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", ["go_app","com.mofing/mainActivity"], $pushData);
     //$result = $push->send("0860916034765707300003689500CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", ["go_custom",""], $pushData);
-    //$result = $push->send("0862848040691494300003689500CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", "go_scheme", $pushData);
+    //$result = $push->send("0860980038743938300005381200CN01", "阿宝外卖通知", "点击查看详细", "huawei", "message", "go_scheme", $pushData);
+    //$deviceToken, $title, $message, $platform, $customize
+    $result[] = $push->unionSend("0860980038743938300005381200CN01", "阿宝外卖通知", "点击查看详细", "huawei",  $pushData);
     //小米测试
     //$result = $push->send("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", "quiet", "go_custom", $pushData);
     //透传测试ok
@@ -66,12 +68,12 @@ try {
     //$result = $push->send("CN_1922ffcc67487d7ffd64708515f6d38f", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", "message", ["go_page","com.abao.oppopush"], $pushData);
     
     //组合推送
-    //$result =$push->unionSend(1433346, "CN_7c966fae247d75695ff6c26102f1f80d", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
+    $result[] =$push->unionSend(1433346, "CN_7c966fae247d75695ff6c26102f1f80d", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
     //消息推送+点击通知栏，跳转到指定界面
     //$result[] =$push->sendWithClick("1433346", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "xiaomi", $pushData);
     //$result[] =$push->sendWithClick("0862848040691494300003689500CN01", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "huawei", $pushData);
     //$result[] =$push->sendWithClick("99", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "vivo", $pushData);
-    $result[] =$push->sendWithClick("Realme_CN_028a137970d28c0c1721c87331644bf3", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
+    //$result[] =$push->sendWithClick("Realme_CN_028a137970d28c0c1721c87331644bf3", "阿宝外卖通知", "点击查看详细点击查看详细点击查看详细", "oppo", $pushData);
     print_r($result);
 } catch (Exception $e) {
     print_r($e);

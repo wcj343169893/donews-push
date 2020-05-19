@@ -161,6 +161,7 @@ class Push implements DoNewsPusher
          * @var \Mofing\DoNewsPush\Services\BasePush $push
          */
         $push = new $service($config);
+        $push->setPkgName($this->_config["pkgname"]);
         try {
             return $push->getAccessToken(1,true);
         } catch (\Exception $e) {

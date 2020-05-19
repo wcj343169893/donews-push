@@ -245,9 +245,9 @@ class BasePush implements PushInterface
     public function getCacheKey($key)
     {
         if (! empty($this->_redisConfig["prefix"])) {
-            return $this->_redisConfig["prefix"] . $key;
+            return $this->_redisConfig["prefix"].$this->pkgName."_" . $key;
         }
-        return $key;
+        return $this->pkgName."_".$key;
     }
 
     /**
